@@ -10,25 +10,45 @@ const firebaseConfig = {
   measurementId: "G-NB7D3C2T9W",
 };
 
-// تهيئة Firebase
-firebase.initializeApp(firebaseConfig);
+// تهيئة Firebase مع التحقق من التحميل
+let auth, database;
 
-// الحصول على مراجع Firebase
-const auth = firebase.auth();
-const database = firebase.database();
+function initializeFirebaseApp() {
+  try {
+    if (typeof firebase === 'undefined') {
+      console.error('❌ Firebase SDK غير محمل');
+      return false;
+    }
+    
+    // تهيئة Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    
+    // الحصول على مراجع Firebase
+    auth = firebase.auth();
+    database = firebase.database();
+    
+    console.log('✅ تم تهيئة Firebase بنجاح');
+    return true;
+  } catch (error) {
+    console.error('❌ خطأ في تهيئة Firebase:', error);
+    return false;
+  }
+}
 
 // متغيرات النظام
 let isFirebaseReady = false;
 let syncInProgress = false;
 
-// تهيئة النظام عند تحميل الصفحة
-document.addEventListener("DOMContentLoaded", function () {
-  initializeFirebase();
-});
-
 // تهيئة Firebase والتحقق من الاتصال
 async function initializeFirebase() {
   try {
+    // تهيئة التطبيق أولاً
+    if (!initializeFirebaseApp()) {
+      throw new Error('فشل في تهيئة Firebase');
+    }
+    
     // تسجيل الدخول كمجهول للوصول للبيانات
     await auth.signInAnonymously();
     isFirebaseReady = true;
@@ -230,7 +250,7 @@ async function syncAllDataToFirebase() {
 // ===========================================
 
 // تحديث وظيفة حفظ الاختبارات
-const originalSaveExams = function () {
+window.saveExams = function () {
   // حفظ في localStorage (للتوافق مع النظام الحالي)
   localStorage.setItem("exams", JSON.stringify(window.exams));
 
@@ -241,7 +261,7 @@ const originalSaveExams = function () {
 };
 
 // تحديث وظيفة حفظ الطلاب المتميزين
-const originalSaveStudents = function () {
+window.saveStudents = function () {
   localStorage.setItem("students", JSON.stringify(window.students));
   if (isFirebaseReady) {
     saveToFirebase("students", window.students);
@@ -249,7 +269,7 @@ const originalSaveStudents = function () {
 };
 
 // تحديث وظيفة حفظ أوراق العمل
-const originalSaveWorksheets = function () {
+window.saveWorksheets = function () {
   localStorage.setItem("worksheets", JSON.stringify(window.worksheets));
   if (isFirebaseReady) {
     saveToFirebase("worksheets", window.worksheets);
@@ -257,7 +277,7 @@ const originalSaveWorksheets = function () {
 };
 
 // تحديث وظيفة حفظ الخطط الأسبوعية
-const originalSaveWeeklyPlans = function () {
+window.saveWeeklyPlans = function () {
   localStorage.setItem("weeklyPlans", JSON.stringify(window.weeklyPlans));
   if (isFirebaseReady) {
     saveToFirebase("weeklyPlans", window.weeklyPlans);
@@ -265,7 +285,7 @@ const originalSaveWeeklyPlans = function () {
 };
 
 // تحديث وظيفة حفظ الإنجازات المصورة
-const originalSavePhotoAchievements = function () {
+window.savePhotoAchievements = function () {
   localStorage.setItem(
     "photoAchievements",
     JSON.stringify(window.photoAchievements)
@@ -276,7 +296,7 @@ const originalSavePhotoAchievements = function () {
 };
 
 // تحديث وظيفة حفظ ملفات الإنجاز
-const originalSaveAchievementFiles = function () {
+window.saveAchievementFiles = function () {
   localStorage.setItem(
     "achievementFiles",
     JSON.stringify(window.achievementFiles)
@@ -287,7 +307,7 @@ const originalSaveAchievementFiles = function () {
 };
 
 // تحديث وظيفة حفظ التذكيرات
-const originalSaveReminders = function () {
+window.saveReminders = function () {
   localStorage.setItem("reminders", JSON.stringify(window.reminders));
   if (isFirebaseReady) {
     saveToFirebase("reminders", window.reminders);
@@ -295,7 +315,7 @@ const originalSaveReminders = function () {
 };
 
 // تحديث وظيفة حفظ أخطاء الطلاب
-const originalSaveStudentErrors = function () {
+window.saveStudentErrors = function () {
   localStorage.setItem("studentErrors", JSON.stringify(window.studentErrors));
   if (isFirebaseReady) {
     saveToFirebase("studentErrors", window.studentErrors);
@@ -303,7 +323,7 @@ const originalSaveStudentErrors = function () {
 };
 
 // تحديث وظيفة حفظ تاريخ الاختبارات
-const originalSaveExamHistory = function () {
+window.saveExamHistory = function () {
   localStorage.setItem("examHistory", JSON.stringify(window.examHistory));
   if (isFirebaseReady) {
     saveToFirebase("examHistory", window.examHistory);
@@ -311,7 +331,7 @@ const originalSaveExamHistory = function () {
 };
 
 // تحديث وظيفة حفظ متابعة الطلاب
-const originalSaveStudentTracking = function () {
+window.saveStudentTracking = function () {
   localStorage.setItem(
     "studentTracking",
     JSON.stringify(window.studentTracking)
@@ -322,7 +342,7 @@ const originalSaveStudentTracking = function () {
 };
 
 // تحديث وظيفة حفظ عدادات الرفع
-const originalSaveStudentUploadCounts = function () {
+window.saveStudentUploadCounts = function () {
   localStorage.setItem(
     "studentUploadCounts",
     JSON.stringify(window.studentUploadCounts)
@@ -356,50 +376,24 @@ function syncDataImmediately(dataType, data) {
 // وظائف تحديث localStorage الموجودة
 // ===========================================
 
-// تحديث جميع وظائف localStorage لتستخدم Firebase أيضاً
-function updateLocalStorageFunctions() {
-  // تحديث وظيفة حفظ الاختبارات
-  const originalSetItem = localStorage.setItem;
-  localStorage.setItem = function (key, value) {
-    // استخدم الوظيفة الأصلية
-    originalSetItem.call(this, key, value);
-
-    // مزامنة مع Firebase حسب نوع البيانات
-    if (isFirebaseReady) {
-      switch (key) {
-        case "exams":
-          syncDataImmediately("exams", JSON.parse(value));
-          break;
-        case "students":
-          syncDataImmediately("students", JSON.parse(value));
-          break;
-        case "worksheets":
-          syncDataImmediately("worksheets", JSON.parse(value));
-          break;
-        case "weeklyPlans":
-          syncDataImmediately("weeklyPlans", JSON.parse(value));
-          break;
-        case "photoAchievements":
-          syncDataImmediately("photoAchievements", JSON.parse(value));
-          break;
-        case "achievementFiles":
-          syncDataImmediately("achievementFiles", JSON.parse(value));
-          break;
-        case "reminders":
-          syncDataImmediately("reminders", JSON.parse(value));
-          break;
-        case "studentErrors":
-          syncDataImmediately("studentErrors", JSON.parse(value));
-          break;
-        case "examHistory":
-          syncDataImmediately("examHistory", JSON.parse(value));
-          break;
-        case "studentTracking":
-          syncDataImmediately("studentTracking", JSON.parse(value));
-          break;
-        case "studentUploadCounts":
-          syncDataImmediately("studentUploadCounts", JSON.parse(value));
-          break;
+// تحديث localStorage مع مزامنة Firebase
+function setupLocalStorageSync() {
+  // حفظ المرجع الأصلي
+  const originalSetItem = localStorage.setItem.bind(localStorage);
+  
+  // تحديث localStorage.setItem
+  localStorage.setItem = function(key, value) {
+    // حفظ في localStorage أولاً
+    originalSetItem(key, value);
+    
+    // مزامنة مع Firebase إذا كان متاحاً
+    if (isFirebaseReady && !syncInProgress) {
+      try {
+        const parsedValue = JSON.parse(value);
+        syncDataImmediately(key, parsedValue);
+      } catch (e) {
+        // إذا لم يكن JSON صالح، تجاهل المزامنة
+        console.log(`تجاهل مزامنة ${key} - ليس JSON صالح`);
       }
     }
   };
@@ -807,31 +801,61 @@ function showFirebaseNotification(message, type = "info") {
 // تهيئة النظام والتكامل
 // ===========================================
 
-// تهيئة النظام بعد تحميل الصفحة
-document.addEventListener("DOMContentLoaded", function () {
-  // انتظار تحميل الكود الأصلي أولاً
-  setTimeout(() => {
-    updateLocalStorageFunctions();
-    console.log("🔥 تم تفعيل تكامل Firebase مع الموقع");
-  }, 1000);
-});
+// تهيئة النظام عند تحميل الصفحة
+function initializeSystem() {
+  console.log("🔥 بدء تهيئة نظام Firebase...");
+  
+  // تهيئة Firebase
+  initializeFirebase();
+  
+  // إعداد مزامنة localStorage
+  setupLocalStorageSync();
+  
+  // إضافة زر إدارة Firebase للمعلم
+  setTimeout(addFirebaseManagementButton, 2000);
+  
+  console.log("🔥 تم تفعيل تكامل Firebase مع الموقع");
+}
+
+// بدء التهيئة عند تحميل الصفحة
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeSystem);
+} else {
+  // الصفحة محملة بالفعل
+  initializeSystem();
+}
 
 // إضافة زر إدارة Firebase للمعلم
 function addFirebaseManagementButton() {
-  // البحث عن منطقة أزرار المعلم
-  const adminButtons = document.querySelector(".admin-controls");
+  // البحث عن زر لوحة التحكم
+  const adminPanelBtn = document.getElementById("adminPanelBtn");
+  
+  if (!adminPanelBtn) {
+    // إعادة المحاولة بعد ثانية
+    setTimeout(addFirebaseManagementButton, 1000);
+    return;
+  }
 
-  if (adminButtons && window.isAdmin) {
+  // التحقق من وجود الزر مسبقاً
+  if (document.getElementById("firebaseManagementBtn")) {
+    return;
+  }
+
+  // إنشاء زر إدارة Firebase
+  if (!adminPanelBtn.classList.contains("hidden")) {
     const firebaseBtn = document.createElement("button");
+    firebaseBtn.id = "firebaseManagementBtn";
     firebaseBtn.onclick = showFirebasePanel;
     firebaseBtn.className =
-      "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 flex items-center";
+      "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 flex items-center mr-3";
     firebaseBtn.innerHTML = `
         <span class="text-xl mr-2">🔥</span>
         إدارة قاعدة البيانات
       `;
 
-    adminButtons.appendChild(firebaseBtn);
+    // إدراج الزر بجانب زر لوحة التحكم
+    adminPanelBtn.parentNode.insertBefore(firebaseBtn, adminPanelBtn.nextSibling);
+    console.log("🔥 تم إضافة زر إدارة Firebase");
   }
 }
 
@@ -839,14 +863,11 @@ function addFirebaseManagementButton() {
 function monitorAdminLogin() {
   const observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
-      if (
-        mutation.type === "attributes" &&
-        mutation.attributeName === "class"
-      ) {
+      if (mutation.type === "attributes" && mutation.attributeName === "class") {
         const adminPanel = document.getElementById("adminPanelBtn");
         if (adminPanel && !adminPanel.classList.contains("hidden")) {
           // المعلم سجل دخوله
-          setTimeout(addFirebaseManagementButton, 500);
+          addFirebaseManagementButton();
         }
       }
     });
@@ -855,11 +876,12 @@ function monitorAdminLogin() {
   const adminPanelBtn = document.getElementById("adminPanelBtn");
   if (adminPanelBtn) {
     observer.observe(adminPanelBtn, { attributes: true });
+  } else {
+    // إعادة المحاولة بعد ثانية
+    setTimeout(monitorAdminLogin, 1000);
   }
 }
 
-// بدء مراقبة تسجيل دخول المعلم
-setTimeout(monitorAdminLogin, 2000);
 
 // ===========================================
 // وظائف مساعدة للتوافق
@@ -869,6 +891,11 @@ setTimeout(monitorAdminLogin, 2000);
 window.isFirebaseConnected = function () {
   return isFirebaseReady;
 };
+
+// إتاحة المراجع للاستخدام الخارجي
+window.firebase = firebase;
+window.database = database;
+window.auth = auth;
 
 // إجبار المزامنة الفورية
 window.forceSyncToFirebase = function () {
@@ -887,5 +914,8 @@ window.forceLoadFromFirebase = function () {
     showFirebaseNotification("هذه الميزة متاحة للمعلم فقط", "error");
   }
 };
+
+// بدء مراقبة تسجيل دخول المعلم
+setTimeout(monitorAdminLogin, 1000);
 
 console.log("🔥 Firebase Integration Ready - تكامل Firebase جاهز!");

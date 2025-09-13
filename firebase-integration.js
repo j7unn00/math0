@@ -262,32 +262,35 @@ function addFirebaseButton() {
 // تهيئة التكامل
 // ===========================================
 
-// تهيئة التكامل عند تحميل الصفحة
-document.addEventListener("DOMContentLoaded", function () {
-  // انتظار تحميل الكود الأصلي
+// تهيئة التكامل
+function initializeIntegration() {
+  console.log("🔥 بدء تهيئة تكامل Firebase...");
+  
+  updateStorageFunctions();
+  updateGetStorageFunctions();
+
+  // تحديث الوظائف الموجودة
   setTimeout(() => {
-    updateStorageFunctions();
-    updateGetStorageFunctions();
+    updateUploadWorksheet();
+    updateUploadWeeklyPlan();
+    updateUploadPhotoAchievement();
+    updateSaveReminder();
+    updateSaveStudent();
+    updateFinishExam();
 
-    // تحديث الوظائف الموجودة
-    setTimeout(() => {
-      updateUploadWorksheet();
-      updateUploadWeeklyPlan();
-      updateUploadPhotoAchievement();
-      updateSaveReminder();
-      updateSaveStudent();
-      updateFinishExam();
+    // بدء مراقبة التغييرات
+    watchDataChanges();
 
-      // بدء مراقبة التغييرات
-      watchDataChanges();
-
-      // إضافة زر Firebase
-      addFirebaseButton();
-
-      console.log("🔥 تم تفعيل تكامل Firebase مع جميع وظائف الموقع");
-    }, 2000);
+    console.log("🔥 تم تفعيل تكامل Firebase مع جميع وظائف الموقع");
   }, 1000);
-});
+}
+
+// بدء التهيئة
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeIntegration);
+} else {
+  initializeIntegration();
+}
 
 // ===========================================
 // وظائف خاصة للنسخ الاحتياطي السريع
@@ -502,20 +505,18 @@ window.quickRestoreFromFirebase = async function () {
 // تهيئة التكامل
 // ===========================================
 
-// بدء التكامل عند تحميل الصفحة
-document.addEventListener("DOMContentLoaded", function () {
-  setTimeout(() => {
-    updateStorageFunctions();
-    updateGetStorageFunctions();
+// تحقق من صلاحيات المعلم وإضافة الأزرار
+function checkAdminAndAddButtons() {
+  if (window.isAdmin) {
+    addQuickFirebaseButtons();
+  } else {
+    // إعادة المحاولة بعد ثانية
+    setTimeout(checkAdminAndAddButtons, 1000);
+  }
+}
 
-    console.log("🔥 تم تفعيل تكامل Firebase مع الكود الموجود");
-
-    // إضافة أزرار سريعة للاختبار (للمعلم فقط)
-    if (window.isAdmin) {
-      addQuickFirebaseButtons();
-    }
-  }, 2000);
-});
+// بدء فحص صلاحيات المعلم
+setTimeout(checkAdminAndAddButtons, 3000);
 
 // إضافة أزرار سريعة للاختبار
 function addQuickFirebaseButtons() {
